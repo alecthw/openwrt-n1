@@ -145,7 +145,7 @@ jobs:
           name: R${{ env.DATE }} for ARMv8_ROOTFS
           allowUpdates: true
           tag: ARMv8_ROOTFS
-          commit: main
+          commit: master
           token: ${{ secrets.PERSONAL_TOKEN }}
           body: |
             - 此为精简自用底包，包含的应用较少，详情参考README.md

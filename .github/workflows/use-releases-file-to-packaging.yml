@@ -60,7 +60,7 @@ jobs:
           allowUpdates: true
           removeArtifacts: true
           tag: armv8_mini
-          commit: main
+          commit: master
           token: ${{ secrets.PERSONAL_TOKEN }}
           artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
           body: |
