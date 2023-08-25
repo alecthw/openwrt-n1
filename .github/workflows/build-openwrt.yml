@@ -1,0 +1,161 @@
+#
+# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+# https://github.com/P3TERX/Actions-OpenWrt
+# Description: Build OpenWrt using GitHub Actions
+#
+
+name: Build OpenWrt
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 22 * * 4
+
+env:
+  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_BRANCH: master
+  UPLOAD_RELEASE: true
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    if: github.event.repository.owner.id == github.event.sender.id || ! github.event.sender.id
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+
+      - name: Check server configuration
+        run: |
+          echo "警告⚠"
+          echo "若分配的服务器性能不足，务必及时取消，重新运行！"
+          echo "已知编译成功CPU型号：8370C,8171M"
+          echo "已知性能不足CPU型号：8272CL"
+          echo -e "-------------- ------------CPU信息------------------------------------------\n"
+          echo "CPU物理数量:$(cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l)"
+          echo -e "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+          echo "-------------------------------内存信息-------------------------------------------"
+          echo "已安装内存详细信息："
+          sudo lshw -short -C memory | grep GiB
+          echo -e "\n"
+          echo "-----------------------------硬盘信息---------------------------------------------"
+          echo -e  "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l) \n"
+          echo "硬盘详情："
+          df -Th
+
+      - name: Initialization environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi `docker images -q`
+          sudo -E rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d /usr/local/lib/android
+          sudo -E apt -y purge azure-cli* docker* ghc* zulu* llvm* firefox google* dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* snap* aspnetcore*
+          [ -n "$AGENT_TOOLSDIRECTORY" ] && sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo -E apt update
+          sudo -E apt -y install $(curl -fsSL https://is.gd/depends_ubuntu_2204)
+          sudo -E apt -y autoremove --purge
+          sudo -E systemctl daemon-reload
+          sudo -E apt clean
+          sudo timedatectl set-timezone "$TZ"
+          sudo mkdir -p /workdir
+          sudo chown $USER:$GROUPS /workdir
+          echo "status=success" >> ${GITHUB_OUTPUT}
+          df -Th
+
+      - name: Clone source code
+        working-directory: /workdir
+        run: |
+          df -hT $PWD
+          git clone $REPO_URL -b $REPO_BRANCH openwrt
+          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          cd openwrt
+          useVersionInfo=$(git show -s --date=short --format="Author: %an<br/>date: %cd<br/>commit: %s<br/>commit hash: %H")
+          echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
+          echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+
+      - name: Diy part 1
+        run: |
+          chmod +x diy-part1.sh
+          cd openwrt
+          $GITHUB_WORKSPACE/diy-part1.sh
+
+      - name: Update feeds
+        run: cd openwrt && ./scripts/feeds update -a
+
+      - name: Install feeds
+        run: cd openwrt && ./scripts/feeds install -a
+
+      - name: Diy part 2
+        run: |
+          [[ -d "files" ]] && mv -f files openwrt/files
+          [[ -e "config" ]] && cp -f config openwrt/.config
+          cat openwrt/.config
+          chmod +x diy-part2.sh
+          cd openwrt
+          $GITHUB_WORKSPACE/diy-part2.sh
+
+      - name: Download package
+        id: package
+        run: |
+          cd openwrt
+          make defconfig
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+          rm -rf $GITHUB_WORKSPACE/.git
+          rm -rf $GITHUB_WORKSPACE/opt
+          df -Th
+
+      - name: Compile the firmware
+        id: compile
+        run: |
+          cd openwrt
+          echo -e "$(nproc) thread compile"
+          make -j$(nproc) || make -j1 || make -j1 V=s
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Clean up server space
+        if: steps.compile.outputs.status == 'success' && !cancelled()
+        run: |
+          cd openwrt/
+          rm -rf $(ls . | grep -v "^bin$" | xargs) 2>/dev/null
+          df -hT ${PWD}
+
+      - name: Organize files
+        id: organize
+        if: steps.compile.outputs.status == 'success' && !cancelled()
+        run: |
+          cd $GITHUB_WORKSPACE/openwrt/bin/packages
+          tar -zcvf Packages.tar.gz ./*
+          cp Packages.tar.gz $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
+          cd $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
+          rm -rf packages
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Create release
+        id: release
+        uses: ncipollo/release-action@v1
+        with:
+          name: R${{ env.DATE }} for ARMv8_ROOTFS
+          allowUpdates: true
+          tag: ARMv8_ROOTFS
+          commit: main
+          token: ${{ secrets.PERSONAL_TOKEN }}
+          body: |
+            - 此为精简自用底包，包含的应用较少，详情参考README.md
+            - 默认IP：10.21.2.1/20 默认密码：password
+            - 当前使用版本:【编译前的最后一次[➦主源码](https://github.com/coolsnowwolf/lede)更新记录】
+            ${{ env.useVersionInfo }}
+          artifacts: ${{ env.FIRMWARE }}/*
+
+      - name: Workflow Dispatch
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: use-releases-file-to-packaging.yml
+          token: ${{ secrets.PERSONAL_TOKEN }}

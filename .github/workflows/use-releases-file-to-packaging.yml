@@ -1,0 +1,68 @@
+name: Use Releases file to Packaging
+
+on:
+  workflow_dispatch:
+    inputs:
+      openwrt_armvirt:
+        description: "Openwrt armvirt download url"
+        required: true
+        default: https://github.com/alecthw/openwrt-n1/releases/download/ARMv8_ROOTFS/openwrt-armvirt-64-generic-rootfs.tar.gz
+        type: string
+  # schedule:
+  #   - cron: '30 22 * * *'
+
+env:
+  UPLOAD_RELEASE: true
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    if: github.event.repository.owner.id == github.event.sender.id || ! github.event.sender.id
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Initialization environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi `docker images -q`
+          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install $(curl -fsSL https://is.gd/depends_ubuntu_2204)
+          sudo -E apt-get -qq autoremove --purge
+          sudo -E apt-get -qq clean
+          sudo timedatectl set-timezone "$TZ"
+          sudo mkdir -p /workdir
+          sudo chown $USER:$GROUPS /workdir
+          echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+
+      - name: Package Armvirt as OpenWrt
+        if: (!cancelled())
+        uses: ophub/flippy-openwrt-actions@main
+        env:
+          OPENWRT_ARMVIRT: ${{ inputs.openwrt_armvirt }}
+          PACKAGE_SOC: s905d
+          WHOAMI: alecthw
+          KERNEL_VERSION_NAME: 6.1.1
+          KERNEL_AUTO_LATEST: true
+          GZIP_IMGS: .gz
+          GH_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+
+      - name: Upload OpenWrt Firmware to Release
+        id: release
+        uses: ncipollo/release-action@v1
+        if: env.PACKAGED_STATUS == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+        with:
+          name: R${{ env.DATE }} for armv8_mini
+          allowUpdates: true
+          removeArtifacts: true
+          tag: armv8_mini
+          commit: main
+          token: ${{ secrets.PERSONAL_TOKEN }}
+          artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
+          body: |
+            - 此为自用精简包，包含的应用较少，详情参考README.md
+            - 默认IP：10.21.2.1/20 默认密码：password
