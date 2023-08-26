@@ -64,5 +64,6 @@ jobs:
           token: ${{ secrets.PERSONAL_TOKEN }}
           artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
           body: |
-            - 此为自用精简包，包含的应用较少，详情参考README.md
-            - 默认IP：10.21.2.1/20 默认密码：password
+            - This is a simplified self-use package, which contains fewer applications. For details, refer to [README.md](https://github.com/alecthw/openwrt-n1/blob/master/README.md)
+            - Default IP: 10.21.2.1/20
+            - Default Password: password

@@ -32,20 +32,16 @@ jobs:
 
       - name: Check server configuration
         run: |
-          echo "警告⚠"
-          echo "若分配的服务器性能不足，务必及时取消，重新运行！"
-          echo "已知编译成功CPU型号：8370C,8171M"
-          echo "已知性能不足CPU型号：8272CL"
-          echo -e "-------------- ------------CPU信息------------------------------------------\n"
-          echo "CPU物理数量:$(cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l)"
-          echo -e "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
-          echo "-------------------------------内存信息-------------------------------------------"
-          echo "已安装内存详细信息："
+          echo -e "--------------------------CPU Info--------------------------"
+          echo "CPU Physical Num: $(cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l)"
+          echo -e "CPU Core Num: $(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+          echo "--------------------------Memory Info--------------------------"
+          echo "Installed Memory Details:"
           sudo lshw -short -C memory | grep GiB
           echo -e "\n"
-          echo "-----------------------------硬盘信息---------------------------------------------"
-          echo -e  "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l) \n"
-          echo "硬盘详情："
+          echo "---------------------------Disk Info---------------------------"
+          echo -e  "Disk Num: $(ls /dev/sd* | grep -v [1-9] | wc -l) \n"
+          echo "Disk Details:"
           df -Th
 
       - name: Initialization environment
@@ -148,9 +144,10 @@ jobs:
           commit: master
           token: ${{ secrets.PERSONAL_TOKEN }}
           body: |
-            - 此为精简自用底包，包含的应用较少，详情参考README.md
-            - 默认IP：10.21.2.1/20 默认密码：password
-            - 当前使用版本:【编译前的最后一次[➦主源码](https://github.com/coolsnowwolf/lede)更新记录】
+            - This is a simplified self-use package, which contains fewer applications. For details, refer to [README.md](https://github.com/alecthw/openwrt-n1/blob/master/README.md)
+            - Default IP: 10.21.2.1/20
+            - Default Password: password
+            - Current Verion:【Last commit before compile [➦Main Code](https://github.com/coolsnowwolf/lede) Update Info】
             ${{ env.useVersionInfo }}
           artifacts: ${{ env.FIRMWARE }}/*
 
