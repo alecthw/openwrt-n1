@@ -111,8 +111,14 @@ uci set firewall.@zone[1].network='wan wan6'
 uci commit firewall
 
 # shadowsocksr
-uci set shadowsocksr.pdnsd_enable='0'
+uci set shadowsocksr.@global[0].pdnsd_enable='0'
+uci delete shadowsocksr.@global[0].tunnel_forward
 uci commit shadowsocksr
+
+# mosdns
+uci set mosdns.config.enabled='1'
+uci set mosdns.config.redirect='1'
+uci commit mosdns
 
 uci commit
 

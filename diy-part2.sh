@@ -57,6 +57,10 @@ sed -i "s|ARMv8|armv8_mini|g" package/luci-app-amlogic/root/etc/config/amlogic
 # delete 53 redirect
 sed -i '/REDIRECT --to-ports 53/d' package/lean/default-settings/files/zzz-default-settings
 
+# replace v2ray-geodata
+rm -rf feeds/packages/net/v2ray-geodata
+svn co https://github.com/fw876/helloworld/trunk/v2ray-geodata feeds/packages/net/v2ray-geodata
+
 # add OpenAppFilter
 rm -rf package/OpenAppFilter
 git clone --depth=1 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter
@@ -88,7 +92,8 @@ svn co https://github.com/Lienol/openwrt-packages/branches/master/net/smartdns f
 
 # replace luci-app-mosdns
 rm -rf feeds/luci/applications/luci-app-mosdns
-svn co https://github.com/QiuSimons/openwrt-mos/trunk/luci-app-mosdns feeds/luci/applications/luci-app-mosdns
+svn co https://github.com/sbwml/luci-app-mosdns/trunk/luci-app-mosdns feeds/luci/applications/luci-app-mosdns
+# sed -i 's#PROG start#PROG start -d /etc/mosdns#g' feeds/luci/applications/luci-app-mosdns/root/etc/init.d/mosdns
 
 # download rules
 curl -kL --retry 3 --connect-timeout 3 -o feeds/luci/applications/luci-app-mosdns/root/etc/mosdns/rule/reject-list.txt https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/reject-list.txt
@@ -97,10 +102,13 @@ curl -kL --retry 3 --connect-timeout 3 -o feeds/luci/applications/luci-app-mosdn
 
 # replace mosdns
 rm -rf feeds/packages/net/mosdns
-svn co https://github.com/QiuSimons/openwrt-mos/trunk/mosdns feeds/packages/net/mosdns
+svn co https://github.com/sbwml/luci-app-mosdns/trunk/mosdns feeds/packages/net/mosdns
+rm -rf feeds/packages/net/mosdns/patches
 # use fork repo before PR accepted
 sed -i 's/^PKG_VERSION.*/PKG_VERSION:=fa4996c/g' feeds/packages/net/mosdns/Makefile
 sed -i 's#IrineSistiana/mosdns/tar#alecthw/mosdns/tar#g' feeds/packages/net/mosdns/Makefile
+sed -i 's#v$(PKG_VERSION)#$(PKG_VERSION)#g' feeds/packages/net/mosdns/Makefile
+sed -i 's/^PKG_HASH.*/PKG_HASH:=skip/g' feeds/packages/net/mosdns/Makefile
 
 # add luci-app-openclash
 rm -rf package/luci-app-openclash
