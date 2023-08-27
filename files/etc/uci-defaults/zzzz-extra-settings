@@ -117,7 +117,7 @@ uci commit shadowsocksr
 
 # mosdns
 uci set mosdns.config.enabled='1'
-uci set mosdns.config.redirect='1'
+# uci set mosdns.config.redirect='1'
 uci commit mosdns
 
 uci commit
