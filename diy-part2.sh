@@ -30,8 +30,10 @@ echo "DISTRIB_SOURCECODE='lede'" >>package/base-files/files/etc/openwrt_release
 #
 # Add luci-app-amlogic
 svn co https://github.com/ophub/luci-app-amlogic/trunk/luci-app-amlogic package/luci-app-amlogic
-sed -i "s|amlogic_firmware_repo.*|amlogic_firmware_repo 'https://github.com/alecthw/openwrt-n1'|g" package/luci-app-amlogic/root/etc/config/amlogic
-sed -i "s|ARMv8|armv8_mini|g" package/luci-app-amlogic/root/etc/config/amlogic
+# sed -i "s|amlogic_firmware_repo.*|amlogic_firmware_repo 'https://github.com/alecthw/openwrt-n1'|g" package/luci-app-amlogic/root/etc/config/amlogic
+# sed -i "s|ARMv8|armv8_mini|g" package/luci-app-amlogic/root/etc/config/amlogic
+sed -i "s|amlogic_firmware_repo.*|amlogic_firmware_repo 'https://github.com/alecthw/openwrt-actions'|g" package/luci-app-amlogic/root/etc/config/amlogic
+sed -i "s|ARMv8|lede-common-n1|g" package/luci-app-amlogic/root/etc/config/amlogic
 
 # Fix runc version error
 # rm -rf ./feeds/packages/utils/runc/Makefile
